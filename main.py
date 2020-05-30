@@ -1,55 +1,31 @@
 import numpy as np
 import pandas as pd
 from flask import Flask, render_template, request
+import re
+from PIL import Image
+import umap
+import matplotlib.pyplot as plt
+import seaborn as sns
 # libraries for making count matrix and similarity matrix
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
 # define a function that creates similarity matrix
 # if it doesn't exist
-def create_sim():
-    data = pd.read_csv('data.csv')
-    # creating a count matrix
-    cv = CountVectorizer()
-    count_matrix = cv.fit_transform(data['comb'])
-    # creating a similarity score matrix
-    sim = cosine_similarity(count_matrix)
-    return data,sim
 
 
 # defining a function that recommends 10 most similar movies
-def rcmd(m):
-    m = m.lower()
-    # check if data and sim are already assigned
-    try:
-        data.head()
-        sim.shape
-    except:
-        data, sim = create_sim()
-    # check if the movie is in our database or not
-    if m not in data['movie_title'].unique():
-        return('This movie is not in our database.\nPlease check if you spelled it correct.')
-    else:
-        # getting the index of the movie in the dataframe
-        i = data.loc[data['movie_title']==m].index[0]
+def rcmd(movie):
 
-        # fetching the row containing similarity scores of the movie
-        # from similarity matrix and enumerate it
-        lst = list(enumerate(sim[i]))
-
-        # sorting this list in decreasing order based on the similarity score
-        lst = sorted(lst, key = lambda x:x[1] ,reverse=True)
-
-        # taking top 1- movie scores
-        # not taking the first index since it is the same movie
-        lst = lst[1:11]
-
-        # making an empty list that will containg all 10 movie recommendations
-        l = []
-        for i in range(len(lst)):
-            a = lst[i][0]
-            l.append(data['movie_title'][a])
-        return l
+    cust_tags_list= pd.read_csv('Customer_Tags.csv')
+    mv_tags_list= pd.read_csv('Table_advert1.csv')
+    movie= (input ("Input the name of the Customer"))
+    target_tag_list = cust_tags_list[cust_tags_list.Customer_ID == movie].tag_list.values[0]
+    mv_tags_list_sim = mv_tags_list[['Title','tag_list']]
+    mv_tags_list_sim['jaccard_sim'] = mv_tags_list_sim.tag_list.map(lambda x: len(set(x).intersection(set(target_tag_list))) / len(set(x).union(set(target_tag_list))))
+    text = ','.join(mv_tags_list_sim.sort_values(by = 'jaccard_sim', ascending = False).head(25)['tag_list'].values)
+    bool_series = pd.notnull(mv_tags_list_sim["Title"])
+    mv_tags_list_sim.sort_values(by = 'jaccard_sim', ascending = False).head(10)[bool_series] 
 
 app = Flask(__name__)
 
